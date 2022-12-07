@@ -21,35 +21,29 @@ We propose SCBD as a scalable, and explainable, strategy to prioritize biomarker
 
 After scRNA-seq data had been denoised, clustered and differentially expressed genes (DEGs) had been calculated we applied NicheNet (https://github.com/saeyslab/nichenetr) to select ligand-target interactions between cell types that were predictive of the transcriptomic perturbation observed in the downstream cell type. This allowed creation of a directed multicellular disease model which reflected the altered information flow in disease. Using centrality in the MCDM we were able to rank cell types by their relative importance, which correlated well with the significance of GWAS enrichment among the DEGs of a cell type and the prediction precision for disease-relevant drugs. 
 
-In this project, we created MCTM for each individual cancer dataset from five different cancers. Next, we compared these five MCTMs to identify shMCTM.
+In this project, we created MCTM for each individual cancer dataset from five different cancers. Next, we compared these five MCTMs to identify shMCTM. 
 
 ### Prepare data file for creating MCTM, shMCTM, prioritize cell type
 
-Several files were needed as input file for this step:
+Before we start to create MCTMs, several files were needed as input files:
 
 1. Differentially expressed genes (DEGs) between tumor vs. normal within each cell type. 
 
-The DEG file should be prepared for each cancer separately, and organized as two ways:
+The DEG file should be prepared as below:
 
-- A dataframe that contains gene name of DEGs within each cell type
-```
-head(DEGs)
-```
+- A dataframe that contains gene name of DEGs within each cell type (one file per cancer).
+<img width="898" alt="image" src="https://user-images.githubusercontent.com/98571115/206129210-e804f115-d3fc-4176-8140-70c860eb6ec9.png">
 
-- A dataframe that contains logFC for DEGs
-```
-head(DEGs)
-```
-
-
+- A dataframe that contains logFC for all DEGs with each cell type/cancer (one file for all cancers).
+<img width="425" alt="image" src="https://user-images.githubusercontent.com/98571115/206133430-a8fdbdef-f5ac-4079-8ac2-7e2f38554722.png">
 
 2. Background genes within each cell type.
 
-Background genes were defined as genes expressed in more than 1% of cells in this cell type. However, the percentage of cells can be change to other value based on each project's need. (ref - NicheNet page)
-
-
+Background genes were defined as genes expressed in more than 1% of cells in this cell type. However, the percentage of cells can be change to other value based on each project's need. (ref - NicheNet page). Background genes should be organized as below:
+<img width="966" alt="image" src="https://user-images.githubusercontent.com/98571115/206129419-0eb174aa-5028-48b7-8136-9f9554952ca2.png">
 
 3. Marker genes calculated for each cluster against all other clusters.
+<img width="394" alt="image" src="https://user-images.githubusercontent.com/98571115/206136431-eef41185-6bf6-4dba-b37a-2cb1b44541d1.png">
 
 
 ### Create MCTM
