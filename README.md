@@ -9,7 +9,7 @@ The background problem is early cancer diagnosis improves survival, but is compl
 
 We first constructed multicellular tumor models of each cancer, as well as their shared characteristics (MCTMs, and shMCTM, respectively). These showed predicted interactions between upstream regulators in each cell type and their downstream genes in other cell types. The interactions were multi-directional, and showed no evident hierarchical organization in which tumor cells had a superior role. Ranking of cell types based on network tools and GWAS enrichment showed that tumor cells and fibroblasts had the relatively most important pathogenic roles. These analyzes were used to systematically prioritize genetic, mRNA and protein biomarkers based on functional understanding of underlying mechanisms, and their relative importance. Machine learning was applied to validate, optimal combinations of these biomarkers for MCED in independent GWAS, mRNA or protein profiling data from multiple cancers. 
 
-We propose SCBD as a scalable, and explainable, strategy to prioritize biomarkers from existing and emerging multi-omics data, which may be used for MCED and prognosis. We have made SCBD, and underlying data freely available for this purpose. 
+We propose SCBD as a scalable, and explainable, strategy to prioritize biomarkers from existing and emerging multi-omics data, which may be used for MCED and prognosis. 
 
 
 ## Overview
@@ -21,15 +21,25 @@ We propose SCBD as a scalable, and explainable, strategy to prioritize biomarker
 
 After scRNA-seq data had been denoised, clustered and differentially expressed genes (DEGs) had been calculated we applied NicheNet (https://github.com/saeyslab/nichenetr) to select ligand-target interactions between cell types that were predictive of the transcriptomic perturbation observed in the downstream cell type. This allowed creation of a directed multicellular disease model which reflected the altered information flow in disease. Using centrality in the MCDM we were able to rank cell types by their relative importance, which correlated well with the significance of GWAS enrichment among the DEGs of a cell type and the prediction precision for disease-relevant drugs. 
 
-In this project, we created MCTM for each individual cancer dataset from five different cancers. Next, we compared these five MCTMs to identify shMCTM
+In this project, we created MCTM for each individual cancer dataset from five different cancers. Next, we compared these five MCTMs to identify shMCTM.
 
 ### Prepare data file for creating MCTM, shMCTM, prioritize cell type
 
+Several files were needed as input file for this step:
+
 1. Differentially expressed genes (DEGs) between tumor vs. normal within each cell type. 
 
-In this project, the DEGs were identified using the Seurat embedded Model-based Analysis of Single-cell Transcriptomics (MAST) function. However, other users can use other DEG method based on their own judge.
+The DEG file should be prepared for each cancer separately, and organized as two ways:
 
-The DEG file should be formated as below:
+- A dataframe that contains gene name of DEGs within each cell type
+```
+head(DEGs)
+```
+
+- A dataframe that contains logFC for DEGs
+```
+head(DEGs)
+```
 
 
 
@@ -59,7 +69,6 @@ Background genes were defined as genes expressed in more than 1% of cells in thi
 
 
 ### Identify dominant cell type for shMCTM genes
-
 
 
 
@@ -98,15 +107,15 @@ patchwork: 1.1.2
 
 ***Python:***
 
-sklearn: 
+sklearn: 0.23.1
 
-scipy: 
+scipy: 1.9.3
 
-pandas: 
+pandas: 1.5.1
 
-numpy: 
+numpy: 1.23.4
 
-matplotlib: 
+matplotlib: 3.2.2
 
 
 
