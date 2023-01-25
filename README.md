@@ -46,25 +46,6 @@ Background genes were defined as genes expressed in more than 1% of cells in thi
 <img width="394" alt="image" src="https://user-images.githubusercontent.com/98571115/206136431-eef41185-6bf6-4dba-b37a-2cb1b44541d1.png">
 
 
-### Create MCTM
-
-
-
-### Create shMCTM
-
-
-
-### Centrality
-
-
-
-### GWAS gene enrichment
-
-
-
-### Identify dominant cell type for shMCTM genes
-
-
 
 ## Environemental set-up
 
