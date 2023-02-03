@@ -29,7 +29,7 @@ Before we start to create MCTMs, several files were needed as input files:
 
 1. Differentially expressed genes (DEGs) between tumor vs. normal within each cell type. 
 
-The DEG file should be prepared as below:
+The DEG files prepared as below:
 
 - A dataframe that contains gene name of DEGs within each cell type (one file per cancer).
 <img width="898" alt="image" src="https://user-images.githubusercontent.com/98571115/206129210-e804f115-d3fc-4176-8140-70c860eb6ec9.png">
@@ -39,7 +39,7 @@ The DEG file should be prepared as below:
 
 2. Background genes within each cell type.
 
-Background genes were defined as genes expressed in more than 1% of cells in this cell type. However, the percentage of cells can be change to other value based on each project's need. (ref - NicheNet page). Background genes should be organized as below (one file per cancer):
+In this case study, background genes were defined as genes expressed in more than 1% of cells in this cell type. However, the percentage of cells can be change to other value based on each project's need. Background gene list organized as below (one file per cancer):
 <img width="966" alt="image" src="https://user-images.githubusercontent.com/98571115/206129419-0eb174aa-5028-48b7-8136-9f9554952ca2.png">
 
 3. Marker genes calculated for each cluster against all other clusters.
