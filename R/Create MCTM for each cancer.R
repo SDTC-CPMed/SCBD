@@ -36,7 +36,6 @@ DEG_method = "MAST"
 cancer_name = c("Lung","Liver","Colon","Ovary","Breast")
 
 for (cancer in cancer_name){
-  cancer = "Lung"
   #1.import DEGs
   DEGs = read.table(file = paste0(wd,"/Data/DEGs_merged_",cancer,".txt"), header= T, sep="\t", stringsAsFactor = T)
   DEGs = DEGs[, apply(DEGs, 2, function(y) any(!is.na(y)))]
