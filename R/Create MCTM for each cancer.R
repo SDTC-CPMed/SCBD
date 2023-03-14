@@ -1,5 +1,4 @@
 # Create MCTM for each cancer 
-
 library(reticulate)
 library(Seurat)
 library(Matrix)
@@ -13,6 +12,8 @@ library(readxl)
 library(plyr)
 library(ComplexHeatmap)
 library(circlize)
+library(patchwork)
+library(RColorBrewer)
 
 # 
 wd = '/Users/yelin.zhao/Library/CloudStorage/OneDrive-Personal/Github/SCBD'
