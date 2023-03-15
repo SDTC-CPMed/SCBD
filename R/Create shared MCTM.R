@@ -1,0 +1,247 @@
+# Create shMCTM 
+library(reticulate)
+library(Seurat)
+library(Matrix)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(nichenetr)
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(plyr)
+library(ComplexHeatmap)
+library(circlize)
+library(patchwork)
+library(RColorBrewer)
+
+input.dir=paste0(wd,"/Data")
+outdir= paste0(wd,"/Output/MCTM/shMCTM")
+if (dir.exists(outdir)==F){dir.create(outdir)
+  print("outdir created")}
+#########################
+# find shared UR####
+ligand_list = list()
+for (cancer in cancer_name){
+  ligands <- read.csv(paste0(wd,"/Output/MCTM/",cancer,"/PCC_positive_ligand.txt"), sep="\t",header= T)
+  ligand_list = c(ligand_list,list(ligands$test_ligand %>% unique ) )
+}
+names(ligand_list) = cancer_name
+ligand_list = c(ligand_list['Breast'],ligand_list['Colon'],ligand_list['Liver'],ligand_list['Lung'],ligand_list['Ovary'])
+
+shared_ligands <- intersect(unlist(ligand_list[1]), unlist(ligand_list[2])) %>% 
+  intersect(.,unlist(ligand_list[3])) %>% 
+  intersect(.,unlist(ligand_list[4])) %>% 
+  intersect(.,unlist(ligand_list[5]))
+length(shared_ligands)                     
+write.table(shared_ligands, file=paste0(outdir,"/shared_UR.txt"), sep="\t", col.names = F, row.names = F)
+
+# venn plot of all URs
+library(VennDiagram)
+library(gplots)
+library(RColorBrewer)
+cancer_color <- c("#ABDDA4","#FFFFBF","#FDAE61","#D7191C","#2B83BA")
+
+venn_list <- ligand_list
+venn.plot <- venn.diagram(x=venn_list, 
+                          col="black",fill=cancer_color , # #paletteer_d("ggthemes::Classic_Green_Orange_6",5)
+                          filename = NULL,
+                          cex=1,cat.cex = 1,cat.fontface = "bold",alpha=0.8,
+                          # fontfamily=3,
+                          margin = 0.05)
+pdf(paste0(outdir,"/Venn_all_URs.pdf"))
+grid.draw(venn.plot)
+dev.off()
+
+# find shared DS ####
+ligand_target_merged <- read.csv(file = paste0(wd,"/Data/ligand_target_merged_withFC.csv"),header = T,sep = ",") 
+
+venn_list = list(Ovary=ligand_target_merged[ligand_target_merged$cancer=="Ovary","target"]  %>% unique,
+                 Breast=ligand_target_merged[ligand_target_merged$cancer=="Breast","target"]  %>% unique,
+                 Colon=ligand_target_merged[ligand_target_merged$cancer=="Colon","target"]  %>% unique,
+                 Liver=ligand_target_merged[ligand_target_merged$cancer=="Liver","target"]  %>% unique,
+                 Lung=ligand_target_merged[ligand_target_merged$cancer=="Lung","target"]  %>% unique)
+
+shared_targets <- intersect(unlist(venn_list[1]), unlist(venn_list[2])) %>% 
+  intersect(.,unlist(venn_list[3])) %>% 
+  intersect(.,unlist(venn_list[4])) %>% 
+  intersect(.,unlist(venn_list[5]))
+length(shared_targets)                     
+write.table(shared_targets, file=paste0(outdir,"/shared_DS.txt"), sep="\t", col.names = F, row.names = F)
+
+venn.plot <- venn.diagram(x=venn_list, 
+                          col="black",fill=cancer_color , 
+                          filename = NULL,
+                          cex=1,cat.cex = 1,cat.fontface = "bold",alpha=0.8,
+                          # fontfamily=3,
+                          margin = 0.05)
+pdf(paste0(outdir,"/Venn_all_DSs.pdf"))
+grid.draw(venn.plot)
+dev.off()
+
+# # find shared DS of shared UR 
+# ligand_target_merged_DS_of_shUR = data.frame()
+# DS_list = list()
+# for (cancer in cancer_name){
+#   active_ligand_target_links_df_list = list.files(paste0(wd,"/Output/MCTM/",cancer,"/DS"),pattern = "active_ligand_target_links_df_*",full.names = T)
+# 
+#   active_ligand_target_links_df_merged = matrix(NA,ncol=5) %>% as.data.frame()
+#   colnames(active_ligand_target_links_df_merged) = c('ligand', 'target', 'weight', 'sender', 'receiver')
+#   for (i in active_ligand_target_links_df_list){
+#     print(i)
+#     a = read.csv(i,header=T,row.names = 1)
+#     active_ligand_target_links_df_merged = rbind(active_ligand_target_links_df_merged,a)
+#   }
+#   
+#   #remove low weight targets
+#   cutoff <- 0.25
+#   active_ligand_target_links_df_merged <- active_ligand_target_links_df_merged[active_ligand_target_links_df_merged$weight > (ligand_target_matrix %>% quantile(cutoff)),]
+#   active_ligand_target_links_df_merged <- active_ligand_target_links_df_merged[2:dim(active_ligand_target_links_df_merged)[1],]
+#   
+#   #only keep targets of shared_ligands
+#   active_ligand_target_links_df_merged  = active_ligand_target_links_df_merged[active_ligand_target_links_df_merged$ligand %in% shared_ligands,]
+#   
+#   #import DEGs
+#   DEG_merge_all = read.csv(paste0(wd,"/Data/DEGs_of_all_celltype_cancer_FC.csv"),header = T,row.names = 1)
+#   DEG_merge_all = select(DEG_merge_all,-p_val,-pct.1,	-pct.2,	-p_val_adj)
+#   DEG_merge_all = DEG_merge_all[DEG_merge_all$cancer == cancer,]
+#   
+#   #add FC 
+#   active_ligand_target_links_df_merged = merge(active_ligand_target_links_df_merged,DEG_merge_all,by.x=c('ligand','sender'),by.y=c('gene','cell'),all.x=T)
+#   active_ligand_target_links_df_merged = merge(active_ligand_target_links_df_merged,DEG_merge_all,by.x=c('target','receiver'),by.y=c('gene','cell'),all.x=T)
+#   head(active_ligand_target_links_df_merged) 
+#   active_ligand_target_links_df_merged = active_ligand_target_links_df_merged %>% select(-cancer.x)
+#   colnames(active_ligand_target_links_df_merged) = c('target',  'receiver' ,'ligand','sender','weight', 'avg_log2FC.ligand', 'avg_log2FC.target','cancer')
+#   active_ligand_target_links_df_merged = active_ligand_target_links_df_merged[is.na(active_ligand_target_links_df_merged$avg_log2FC.ligand) != T & is.na(active_ligand_target_links_df_merged$avg_log2FC.target) != T,]
+#   
+#   write.table(active_ligand_target_links_df_merged,file = paste0(wd,"/Output/MCTM/",cancer,"/ligand_target_merged_withFC.csv"), sep=",",col.names = T,row.names = F,quote = F)
+#   active_ligand_target_links_df_merged = read.csv2( paste0(wd,"/Output/MCTM/",cancer,"/ligand_target_merged_withFC.csv"),sep=",")
+#   head(active_ligand_target_links_df_merged)
+#   
+#   ligand_target_merged_DS_of_shUR = rbind(ligand_target_merged_DS_of_shUR,active_ligand_target_links_df_merged)
+#   
+#   DS = active_ligand_target_links_df_merged$target %>% unique
+#   DS_list = c(DS_list,list(DS))
+#   write.table(DS,file = paste0(wd,"/Output/MCTM/",cancer,"/all_DS.csv"), sep=",",col.names = F,row.names = F,quote = F)
+# }
+# 
+# head(ligand_target_merged_DS_of_shUR)
+# dim(ligand_target_merged_DS_of_shUR)
+# 
+# # shared DS of shared UR
+# ligand_target_merged_allDS <- read.csv(paste0(wd,"/Data/ligand_target_merged_withFC.csv"), sep=",",header=T)
+# unique(ligand_target_merged_allDS$target) %>% length()
+# unique(ligand_target_merged_allDS$ligand) %>% length()
+# shared_ligands = read.csv(paste0(outdir,"/shared_UR.txt"),sep = "\t",header = F)
+# shared_ligands = shared_ligands$V1  %>% as.vector
+# 
+# shared_DS <- intersect(ligand_target_merged_DS_of_shUR[ligand_target_merged_DS_of_shUR$cancer==cancer_name[1],"target"] %>% unique,
+#                        ligand_target_merged_DS_of_shUR[ligand_target_merged_DS_of_shUR$cancer==cancer_name[2],"target"] %>% unique) %>% 
+#   intersect(.,ligand_target_merged_DS_of_shUR[ligand_target_merged_DS_of_shUR$cancer==cancer_name[3],"target"] %>% unique) %>% 
+#   intersect(.,ligand_target_merged_DS_of_shUR[ligand_target_merged_DS_of_shUR$cancer==cancer_name[4],"target"] %>% unique) %>% 
+#   intersect(.,ligand_target_merged_DS_of_shUR[ligand_target_merged_DS_of_shUR$cancer==cancer_name[5],"target"] %>% unique)
+# length(shared_DS)                     
+# write.table(shared_DS, file=paste0(outdir,"/shared_DS_of_shared_UR.txt"), sep="\t", col.names = F, row.names = F)
+
+#Identify shMCTM ####
+DEG_merge_all = read.csv(paste0(wd,"/Data/DEGs_of_all_celltype_cancer_FC.csv"),header = T,row.names = 1)
+DEG_merge_all = select(DEG_merge_all,-p_val,-pct.1,	-pct.2,	-p_val_adj)
+
+ligand_target_merged_FC = merge(ligand_target_merged,DEG_merge_all,by.x=c('ligand','cancer'),by.y=c('gene','cancer'),all.x=T)
+ligand_target_merged_FC = merge(ligand_target_merged_FC,DEG_merge_all,by.x=c('target','cancer','receiver'),by.y=c('gene','cancer','cell'),all.x=T)
+head(ligand_target_merged_FC)
+ligand_target_merged_FC = ligand_target_merged_FC %>% select(-target_merge,-avg_log2FC)
+colnames(ligand_target_merged_FC) = c('target', 'cancer',    'receiver', 'ligand','weight', 'avg_log2FC.target', 'avg_log2FC.ligand','sender')
+ligand_target_merged_FC = ligand_target_merged_FC[,c('cancer','sender', 'ligand', 'receiver','target','avg_log2FC.ligand', 'avg_log2FC.target')] %>% unique
+
+shared_ligands = read.csv(paste0(outdir,"/shared_UR.txt"), sep="\t",header=F) %>% .[,'V1'] 
+shared_targets = read.csv(paste0(outdir,"/shared_DS.txt"), sep="\t",header=F) %>% .[,'V1'] 
+
+##shUR - Shared URs that has the same expression change in > 4 cancers in the same cell type ####
+ligand_target_merged_FC.shared = ligand_target_merged_FC[ligand_target_merged_FC$ligand %in% shared_ligands & ligand_target_merged_FC$target %in% shared_targets,]
+
+ligand_target_merged_FC.shared.UR = ligand_target_merged_FC.shared[,c('cancer','sender', 'ligand','avg_log2FC.ligand')] %>% unique
+ligand_target_merged_FC.shared.UR = ligand_target_merged_FC.shared.UR[is.na(ligand_target_merged_FC.shared.UR$avg_log2FC.ligand) == F,]
+ligand_target_merged_FC.shared.UR = ligand_target_merged_FC.shared.UR %>% mutate(direction = ifelse(avg_log2FC.ligand>0,1,
+                                                                                          ifelse(avg_log2FC.ligand<0,-1,NA)) )
+shUR = data.frame()
+for (i in unique(ligand_target_merged_FC.shared.UR$sender)){
+  # i='Fibroblast'
+  a = ligand_target_merged_FC.shared.UR[ligand_target_merged_FC.shared.UR$sender==i,] %>% select(cancer ,ligand, direction)
+  a.wide = spread(a,key=c(ligand), value=direction) %>% as.data.frame()
+  rownames(a.wide) = a.wide$cancer
+  a.wide = a.wide %>% select(-cancer)
+  a.wide = a.wide[rownames(a.wide) != 'NA',]
+  a.wide = t(a.wide) %>% as.data.frame()
+  a.wide$sum = apply(a.wide,1,function(x){return(sum(x,na.rm=T))})
+  a.wide = a.wide[abs(a.wide$sum) >= 4,]
+  
+  if(dim(a.wide)[1]==0){next}
+  
+  a.wide$gene = rownames(a.wide)
+  a.wide$cell = i
+  a.wide$type = 'UR'
+  shUR = rbind(shUR,a.wide)
+}
+head(shUR)
+unique(shUR$gene)
+
+a = unique(shUR$gene)
+b = read.csv('/Users/yelin.zhao/Library/CloudStorage/OneDrive-Personal/Projects/cancer/datafile/outputs_5cancers/new_outputs/MCDM/scUR_celltype.csv',sep=',')
+b = b$URs_same_fc %>% unique
+intersect(a,b)
+c = a[a %in% b == F]
+
+##shDS - Shared DSs that has the same expression change in > 4 cancers in the same cell type ####
+ligand_target_merged_FC.shared.DS = ligand_target_merged_FC.shared[,c('cancer','receiver', 'target','avg_log2FC.target')] %>% unique
+ligand_target_merged_FC.shared.DS = ligand_target_merged_FC.shared.DS[is.na(ligand_target_merged_FC.shared.DS$avg_log2FC.target) == F,]
+ligand_target_merged_FC.shared.DS = ligand_target_merged_FC.shared.DS %>% mutate(direction = ifelse(avg_log2FC.target>0,1,
+                                                                                                    ifelse(avg_log2FC.target<0,-1,NA)) )
+shDS = data.frame()
+for (i in unique(ligand_target_merged_FC.shared.DS$receiver)){
+  # i='Fibroblast'
+  a = ligand_target_merged_FC.shared.DS[ligand_target_merged_FC.shared.DS$receiver==i,] %>% select(cancer ,target, direction)
+  a.wide = spread(a,key=c(target), value=direction) %>% as.data.frame()
+  rownames(a.wide) = a.wide$cancer
+  a.wide = a.wide %>% select(-cancer)
+  a.wide = a.wide[rownames(a.wide) != 'NA',]
+  a.wide = t(a.wide) %>% as.data.frame()
+  
+  if(i=="Pericyte"){a.wide$Lung = NA
+  a.wide = a.wide[,c('Breast','Colon','Liver','Lung','Ovary')]}
+    
+  a.wide$sum = apply(a.wide,1,function(x){return(sum(x,na.rm=T))})
+  a.wide = a.wide[abs(a.wide$sum) >= 4,]
+  
+  if(dim(a.wide)[1]==0){next}
+  
+  a.wide$gene = rownames(a.wide)
+  a.wide$cell = i
+  a.wide$type = 'DS'
+  shDS = rbind(shDS,a.wide)
+}
+head(shDS)
+unique(shDS$gene) %>% length
+
+shMCTM = rbind(shUR,shDS)
+shMCTM$cell_gene = paste0(shMCTM$cell,'_',shMCTM$gene)
+unique(shMCTM$gene) %>% length
+
+write.table(shMCTM, file=paste0(outdir,"/shMCTM_genes.txt"), sep="\t", col.names = T, row.names = F)
+
+## shMCTM interaction ####
+ligand_target_merged_FC.shared = ligand_target_merged_FC %>% select(-cancer,-avg_log2FC.ligand ,-avg_log2FC.target) %>% unique
+
+ligand_target_merged_FC.shared$sender_ligand = paste0(ligand_target_merged_FC.shared$sender,'_',ligand_target_merged_FC.shared$ligand)
+ligand_target_merged_FC.shared$receiver_target = paste0(ligand_target_merged_FC.shared$receiver,'_',ligand_target_merged_FC.shared$target)
+
+shMCTM_interaction = ligand_target_merged_FC.shared[ligand_target_merged_FC.shared$sender_ligand %in% shMCTM[shMCTM$type=='UR','cell_gene'],]
+shMCTM_interaction = shMCTM_interaction[shMCTM_interaction$receiver_target %in% shMCTM[shMCTM$type=='DS','cell_gene'],]
+
+head(shMCTM_interaction)
+write.table(shMCTM_interaction, file=paste0(outdir,"/shMCTM_interaction.txt"), sep="\t", col.names = T, row.names = F)
+
+
+
+
+
