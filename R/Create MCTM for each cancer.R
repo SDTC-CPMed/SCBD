@@ -74,10 +74,7 @@ for (cancer in cancer_name){
   for(i in 1:dim(DEGs_human)[2]){ 
     
     for(j in 1:dim(DEGs_human)[2]){
-      
-      # if (j==7) { #One time use, because hv10000_singleR_fine cluster7 doesn't work as receiver cluster
-      #   next
-      # }
+
       sender_cluster = colnames(DEGs_human)[i]
       receiver_cluster = colnames(DEGs_human)[j]   
       
@@ -133,7 +130,7 @@ for (cancer in cancer_name){
       
       ####Find DSs
       best_upstream_ligands = ligand_activities %>% filter(pearson > 0) %>% pull(test_ligand) %>% unique()
-      active_ligand_target_links_df = best_upstream_ligands %>% lapply(get_weighted_ligand_target_links,geneset = geneset_oi, ligand_target_matrix = ligand_target_matrix,n = 250) %>% bind_rows() %>% drop_na()
+      active_ligand_target_links_df = best_upstream_ligands %>% lapply(get_weighted_ligand_target_links,geneset = geneset_oi, ligand_target_matrix = ligand_target_matrix) %>% bind_rows() %>% drop_na()
       if (dim(active_ligand_target_links_df)[1]==0){
         next
       }
