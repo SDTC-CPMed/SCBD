@@ -15,10 +15,13 @@ library(circlize)
 library(patchwork)
 library(RColorBrewer)
 
+wd = '/Users/yelin.zhao/Library/CloudStorage/OneDrive-Personal/Github/SCBD'
+
 input.dir=paste0(wd,"/Data")
 outdir= paste0(wd,"/Output/MCTM/shMCTM")
 if (dir.exists(outdir)==F){dir.create(outdir)
   print("outdir created")}
+cancer_name = c('Lung','Liver','Ovary','Colon','Breast')
 #########################
 # find shared UR####
 ligand_list = list()
@@ -79,16 +82,18 @@ pdf(paste0(outdir,"/Venn_all_DSs.pdf"))
 grid.draw(venn.plot)
 dev.off()
 
-#Identify shMCTM ####
-DEG_merge_all = read.csv(paste0(wd,"/Data/DEGs_of_all_celltype_cancer_FC.csv"),header = T,row.names = 1)
+# Identify shMCTM ####
+DEG_merge_all = read.csv(paste0(wd,"/Data/DEGs_of_all_celltype_cancer_FC.csv"),sep = ';',header = T,row.names = 1)
 DEG_merge_all = select(DEG_merge_all,-p_val,-pct.1,	-pct.2,	-p_val_adj)
 
+colnames(ligand_target_merged)[7] = 'avg_log2FC.target'
 ligand_target_merged_FC = merge(ligand_target_merged,DEG_merge_all,by.x=c('ligand','cancer'),by.y=c('gene','cancer'),all.x=T)
-ligand_target_merged_FC = merge(ligand_target_merged_FC,DEG_merge_all,by.x=c('target','cancer','receiver'),by.y=c('gene','cancer','cell'),all.x=T)
 head(ligand_target_merged_FC)
-ligand_target_merged_FC = ligand_target_merged_FC %>% select(-target_merge,-avg_log2FC)
-colnames(ligand_target_merged_FC) = c('target', 'cancer',    'receiver', 'ligand','weight', 'avg_log2FC.target', 'avg_log2FC.ligand','sender')
-ligand_target_merged_FC = ligand_target_merged_FC[,c('cancer','sender', 'ligand', 'receiver','target','avg_log2FC.ligand', 'avg_log2FC.target')] %>% unique
+ligand_target_merged_FC = ligand_target_merged_FC %>% select(-target_merge,)
+colnames(ligand_target_merged_FC)[7] = 'avg_log2FC.ligand'
+colnames(ligand_target_merged_FC)[8] = 'sender'
+dim(ligand_target_merged_FC)
+ligand_target_merged_FC = ligand_target_merged_FC[is.na(ligand_target_merged_FC$avg_log2FC.ligand )==F,]
 
 shared_ligands = read.csv(paste0(outdir,"/shared_UR.txt"), sep="\t",header=F) %>% .[,'V1'] 
 shared_targets = read.csv(paste0(outdir,"/shared_DS.txt"), sep="\t",header=F) %>% .[,'V1'] 
@@ -99,7 +104,7 @@ ligand_target_merged_FC.shared = ligand_target_merged_FC[ligand_target_merged_FC
 ligand_target_merged_FC.shared.UR = ligand_target_merged_FC.shared[,c('cancer','sender', 'ligand','avg_log2FC.ligand')] %>% unique
 ligand_target_merged_FC.shared.UR = ligand_target_merged_FC.shared.UR[is.na(ligand_target_merged_FC.shared.UR$avg_log2FC.ligand) == F,]
 ligand_target_merged_FC.shared.UR = ligand_target_merged_FC.shared.UR %>% mutate(direction = ifelse(avg_log2FC.ligand>0,1,
-                                                                                          ifelse(avg_log2FC.ligand<0,-1,NA)) )
+                                                                                                    ifelse(avg_log2FC.ligand<0,-1,NA)) )
 shUR = data.frame()
 for (i in unique(ligand_target_merged_FC.shared.UR$sender)){
   # i='Fibroblast'
@@ -145,7 +150,7 @@ for (i in unique(ligand_target_merged_FC.shared.DS$receiver)){
   
   if(i=="Pericyte"){a.wide$Lung = NA
   a.wide = a.wide[,c('Breast','Colon','Liver','Lung','Ovary')]}
-    
+  
   a.wide$sum = apply(a.wide,1,function(x){return(sum(x,na.rm=T))})
   a.wide = a.wide[abs(a.wide$sum) >= 4,]
   
@@ -177,6 +182,114 @@ shMCTM_interaction = shMCTM_interaction[shMCTM_interaction$receiver_target %in% 
 head(shMCTM_interaction)
 write.table(shMCTM_interaction, file=paste0(outdir,"/shMCTM_interaction.txt"), sep="\t", col.names = T, row.names = F)
 
+#xxxxxx########################
+ligand_target_list <- list(ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Lung',],
+                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Liver',],
+                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Colon',],
+                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Ovary',],
+                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Breast',])
+
+ligand_target_list2 <- lapply(ligand_target_list,  
+                              function(df) {
+                                df$ligand_dir <- ifelse(df$avg_log2FC.ligand >0,1, ifelse(df$avg_log2FC.ligand < 0,-1,NA))
+                                df$target_dir <- ifelse(df$avg_log2FC.target >0,1, ifelse(df$avg_log2FC.target < 0,-1,NA))
+                                df$ligand_target_dir_comb <- paste(df$sender,df$ligand,df$ligand_dir,df$receiver,df$target,df$target_dir,sep = '_') #,df$target_dir
+                                return(df)
+                              })
+head(ligand_target_list2[[1]])
+
+find_shMCTM = function(ligand_target_dir_comb = ligand_target_dir_comb, datasets = '4cancer_TNBC',n = 4){
+  # count how many shared ligand_target combinations and select the shUR in >= 4 cancers
+  ligand_target_dir_comb2 = ligand_target_dir_comb[,c('cancer','ligand_target_dir_comb')] %>%  unique
+  df_freq = table(ligand_target_dir_comb2$ligand_target_dir_comb,ligand_target_dir_comb2$cancer) %>% as.data.frame.array()
+  df_freq$combo = rownames(df_freq)
+  head(df_freq)
+  df_freq$sum = apply(df_freq[,1:(dim(df_freq)[2]-1)],1,sum)
+  df_freq = df_freq %>% arrange(-sum)
+  df_freq = df_freq[df_freq$sum >= n,]
+  dim(df_freq)
+  head(df_freq)
+  
+  shMCTM_comb1 = df_freq$combo
+  shMCTM_comb = ligand_target_dir_comb[ligand_target_dir_comb$ligand_target_dir_comb %in% shMCTM_comb1,]
+  shMCTM_comb$ligand %>% unique %>% length
+  shMCTM_comb$target %>% unique %>% length
+  c(shMCTM_comb$ligand %>% unique,shMCTM_comb$target %>% unique ) %>% unique %>% length
+  shMCTM_comb$ligand_target_dir_comb %>% unique %>% length
+  shMCTM_comb$sender %>% unique %>% length
+  shMCTM_comb$receiver %>% unique %>% length
+  c(shMCTM_comb$sender %>% unique,shMCTM_comb$receiver %>% unique ) %>% unique %>% length
+  write.csv(shMCTM_comb,file = paste0(outdir,'/shMCTM_comb_',datasets,'.csv'))
+  write.csv(shMCTM_comb[,c('target','receiver', 'ligand', 'sender')] %>% unique,file = paste0(outdir,'/shMCTM_comb2_',datasets,'.csv'))
+  write.csv(shMCTM_comb[,c('target','receiver') ] %>% unique,file = paste0(outdir,'/shDS_celltype_comb2_',datasets,'.csv'))
+  write.csv(shMCTM_comb[,c('ligand', 'sender')  ] %>% unique,file = paste0(outdir,'/shUR_celltype_comb2_',datasets,'.csv'))
+}
+
+ligand_target_dir_comb = data.frame()
+for (c in c(1:5)){
+  i_ligand_target = ligand_target_list2[[c]]%>% unique
+  ligand_target_dir_comb = rbind(ligand_target_dir_comb,i_ligand_target)
+}
+find_shMCTM(ligand_target_dir_comb = ligand_target_dir_comb, datasets = 'shMCTM_secondtry')
+
+#########################
+# Identify top shURs ####
+library(reshape2)
+df = as.data.frame(shMCTM_interaction[,c('ligand',    'receiver', 'target',   'sender')])
+df.wide = dcast(df, receiver ~ ligand, value.var = "target", fun.aggregate = length) 
+rownames(df.wide) = df.wide$receiver
+df.wide = df.wide %>% select(-receiver)
+df.wide.t = t(df.wide)  
+
+# decide how many clusters we will cut####
+# check elbow
+library("factoextra")
+P = fviz_nbclust(df.wide.t, hcut, hc_method="complete", method = "wss") +
+  geom_vline(xintercept = 2, linetype = 2)+
+  labs(subtitle = "Elbow method")
+pdf(file=paste0(outdir,"/Elbow_clusterof_UR_selection_scaled.pdf"), width = 5, height = 5)
+print(p)
+dev.off()
+
+data = df.wide.t
+# make heatmap ####
+p = Heatmap(data,
+            # split
+            row_split = 2,
+            # column_split = 2,  #split by dendrograms
+            # row_km = 2,
+            # column_km = 2 , #split rows and colums
+            # cluster_column_slices = F,
+            # split = data.frame(cyl = mtcars$cyl, am = mtcars$am), 
+            # column_split = anno_col$Group,
+            #设置title,legend,font
+            rect_gp = gpar(col = "white"),
+            name = "No.interactions", #title of legend
+            column_title = "Downstream cell types", 
+            column_title_side = "bottom",  
+            column_title_gp = gpar(fontsize = 12, fontface = "bold"), 
+            column_names_gp = gpar(fontsize = 9),
+            row_title = "shURs",
+            row_title_side ="right", 
+            row_title_gp = gpar(fontsize = 12) ,
+            row_names_gp = gpar(fontsize = 9), # Text size for row names
+            cluster_columns = T,
+            cluster_rows = T,
+            border = T,
+            col = colorRamp2(c(min(data),max(data)), c("white","red")),
+)
+# pdf(file=paste0(outdir,"heatmap_UR_selection_nonscaled.pdf"), width = 5, height = 8)
+pdf(file=paste0(outdir,"/heatmap_UR_selection_scaled.pdf"), width = 5, height = 8)
+print(p)
+dev.off()
+
+draw(p)
+ro = row_order(p)[[2]]
+draw(p)
+row_order(p)
+rownames(data)[ro]
+top_shURs = rownames(data)[ro]
+write.csv(top_shURs,file = paste0(outdir,'/top_shURs.csv'))
 
 
 
