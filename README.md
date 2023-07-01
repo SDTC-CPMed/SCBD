@@ -13,7 +13,7 @@ We propose SCBD as a scalable, and explainable, strategy to prioritize biomarker
 
 
 ## Overview
-[Figure 1.pdf](https://github.com/SDTC-CPMed/SCBD/files/11925299/Figure.1.pdf)
+![Figure 1.pdf](https://github.com/SDTC-CPMed/SCBD/files/11925299/Figure.1.pdf)
 
 **Overview figure of the study**. A) Multicellular tumor models (MCTMs) were constructed based on scRNA-seq data of five common cancers.  MCTMs showed predicted Upstream Regulators (URs) in any cell type and their Downstream Genes in any other cell types (lines and dots, respectively). A shared MCTM (shMCTM) was extracted from the five MCTMs; Each dot represents one cell type, which is connected by predicted molecular interactions, the directions of which are indicated by arrows. B) Prioritization of shared upstream regulator genes (shURs), cell types and subtypes in the shMCTM led to the identification of potential genetic, mRNA or protein MCED biomarkers. C) The diagnostic and prognostic ability of those were analyzed using GWAS (12 cancers), transcriptomic, and proteomic data (9 cancers).
 
