@@ -172,7 +172,6 @@ write.table(shMCTM, file=paste0(outdir,"/shMCTM_genes.txt"), sep="\t", col.names
 
 ## shMCTM interaction ####
 ligand_target_merged_FC.shared = ligand_target_merged_FC %>% select(-cancer,-avg_log2FC.ligand ,-avg_log2FC.target) %>% unique
-
 ligand_target_merged_FC.shared$sender_ligand = paste0(ligand_target_merged_FC.shared$sender,'_',ligand_target_merged_FC.shared$ligand)
 ligand_target_merged_FC.shared$receiver_target = paste0(ligand_target_merged_FC.shared$receiver,'_',ligand_target_merged_FC.shared$target)
 
@@ -182,66 +181,24 @@ shMCTM_interaction = shMCTM_interaction[shMCTM_interaction$receiver_target %in% 
 head(shMCTM_interaction)
 write.table(shMCTM_interaction, file=paste0(outdir,"/shMCTM_interaction.txt"), sep="\t", col.names = T, row.names = F)
 
-#xxxxxx########################
-ligand_target_list <- list(ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Lung',],
-                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Liver',],
-                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Colon',],
-                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Ovary',],
-                           ligand_target_merged_FC[ligand_target_merged_FC$cancer == 'Breast',])
-
-ligand_target_list2 <- lapply(ligand_target_list,  
-                              function(df) {
-                                df$ligand_dir <- ifelse(df$avg_log2FC.ligand >0,1, ifelse(df$avg_log2FC.ligand < 0,-1,NA))
-                                df$target_dir <- ifelse(df$avg_log2FC.target >0,1, ifelse(df$avg_log2FC.target < 0,-1,NA))
-                                df$ligand_target_dir_comb <- paste(df$sender,df$ligand,df$ligand_dir,df$receiver,df$target,df$target_dir,sep = '_') #,df$target_dir
-                                return(df)
-                              })
-head(ligand_target_list2[[1]])
-
-find_shMCTM = function(ligand_target_dir_comb = ligand_target_dir_comb, datasets = '4cancer_TNBC',n = 4){
-  # count how many shared ligand_target combinations and select the shUR in >= 4 cancers
-  ligand_target_dir_comb2 = ligand_target_dir_comb[,c('cancer','ligand_target_dir_comb')] %>%  unique
-  df_freq = table(ligand_target_dir_comb2$ligand_target_dir_comb,ligand_target_dir_comb2$cancer) %>% as.data.frame.array()
-  df_freq$combo = rownames(df_freq)
-  head(df_freq)
-  df_freq$sum = apply(df_freq[,1:(dim(df_freq)[2]-1)],1,sum)
-  df_freq = df_freq %>% arrange(-sum)
-  df_freq = df_freq[df_freq$sum >= n,]
-  dim(df_freq)
-  head(df_freq)
-  
-  shMCTM_comb1 = df_freq$combo
-  shMCTM_comb = ligand_target_dir_comb[ligand_target_dir_comb$ligand_target_dir_comb %in% shMCTM_comb1,]
-  shMCTM_comb$ligand %>% unique %>% length
-  shMCTM_comb$target %>% unique %>% length
-  c(shMCTM_comb$ligand %>% unique,shMCTM_comb$target %>% unique ) %>% unique %>% length
-  shMCTM_comb$ligand_target_dir_comb %>% unique %>% length
-  shMCTM_comb$sender %>% unique %>% length
-  shMCTM_comb$receiver %>% unique %>% length
-  c(shMCTM_comb$sender %>% unique,shMCTM_comb$receiver %>% unique ) %>% unique %>% length
-  write.csv(shMCTM_comb,file = paste0(outdir,'/shMCTM_comb_',datasets,'.csv'))
-  write.csv(shMCTM_comb[,c('target','receiver', 'ligand', 'sender')] %>% unique,file = paste0(outdir,'/shMCTM_comb2_',datasets,'.csv'))
-  write.csv(shMCTM_comb[,c('target','receiver') ] %>% unique,file = paste0(outdir,'/shDS_celltype_comb2_',datasets,'.csv'))
-  write.csv(shMCTM_comb[,c('ligand', 'sender')  ] %>% unique,file = paste0(outdir,'/shUR_celltype_comb2_',datasets,'.csv'))
-}
-
-ligand_target_dir_comb = data.frame()
-for (c in c(1:5)){
-  i_ligand_target = ligand_target_list2[[c]]%>% unique
-  ligand_target_dir_comb = rbind(ligand_target_dir_comb,i_ligand_target)
-}
-find_shMCTM(ligand_target_dir_comb = ligand_target_dir_comb, datasets = 'shMCTM_secondtry')
-
 #########################
 # Identify top shURs ####
 library(reshape2)
-df = as.data.frame(shMCTM_interaction[,c('ligand',    'receiver', 'target',   'sender')])
+# df1 = read.csv(paste0(outdir,'/shMCTM_comb2_shMCTM_secondtry.csv'),row.names = 1) %>% as.data.frame %>% unique
+shMCTM_interaction = read.csv2(paste0(outdir,"/shMCTM_interaction.txt"), sep="\t")
+
+df = as.data.frame(shMCTM_interaction[,c('ligand',    'receiver', 'target',   'sender')]) %>% unique
 df.wide = dcast(df, receiver ~ ligand, value.var = "target", fun.aggregate = length) 
 rownames(df.wide) = df.wide$receiver
 df.wide = df.wide %>% select(-receiver)
 df.wide.t = t(df.wide)  
+df.wide.t.scaled =scale(df.wide.t) #scaling is necessary to get right distance metrics
 
 # decide how many clusters we will cut####
+#Deciding based on multiple metrics
+library(NbClust)
+res <- NbClust(df.wide.t, diss=NULL, distance = "euclidean",  method = "complete", index = "all")
+
 # check elbow
 library("factoextra")
 P = fviz_nbclust(df.wide.t, hcut, hc_method="complete", method = "wss") +
